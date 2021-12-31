@@ -1,50 +1,56 @@
-/*
- * notion-enhancer: api
+/**
+ * notion-enhancer: components
  * (c) 2021 dragonwocky <thedragonring.bod@gmail.com> (https://dragonwocky.me/)
+ * (c) 2021 CloudHill <rl.cloudhill@gmail.com> (https://github.com/CloudHill)
  * (https://notion-enhancer.github.io/) under the MIT license
  */
 
 'use strict';
 
-/**
- * shared notion-style elements
- * @module notion-enhancer/api/components/side-panel
- */
+/** shared notion-style elements */
 
-import { web, components, registry } from '../_.mjs';
-const db = await registry.db('36a2ffc9-27ff-480e-84a7-c7700a7d232d');
+import { web, components, registry } from '../index.mjs';
 
 const _views = [],
   svgExpand = web.raw`<svg viewBox="-1 -1 9 11">
-  <path d="M 3.5 0L 3.98809 -0.569442L 3.5 -0.987808L 3.01191 -0.569442L 3.5 0ZM 3.5 9L 3.01191
-    9.56944L 3.5 9.98781L 3.98809 9.56944L 3.5 9ZM 0.488094 3.56944L 3.98809 0.569442L 3.01191
-    -0.569442L -0.488094 2.43056L 0.488094 3.56944ZM 3.01191 0.569442L 6.51191 3.56944L 7.48809
-    2.43056L 3.98809 -0.569442L 3.01191 0.569442ZM -0.488094 6.56944L 3.01191 9.56944L 3.98809
-    8.43056L 0.488094 5.43056L -0.488094 6.56944ZM 3.98809 9.56944L 7.48809 6.56944L 6.51191
-    5.43056L 3.01191 8.43056L 3.98809 9.56944Z"></path>
-</svg>`;
+    <path d="M 3.5 0L 3.98809 -0.569442L 3.5 -0.987808L 3.01191 -0.569442L 3.5 0ZM 3.5 9L 3.01191
+      9.56944L 3.5 9.98781L 3.98809 9.56944L 3.5 9ZM 0.488094 3.56944L 3.98809 0.569442L 3.01191
+      -0.569442L -0.488094 2.43056L 0.488094 3.56944ZM 3.01191 0.569442L 6.51191 3.56944L 7.48809
+      2.43056L 3.98809 -0.569442L 3.01191 0.569442ZM -0.488094 6.56944L 3.01191 9.56944L 3.98809
+      8.43056L 0.488094 5.43056L -0.488094 6.56944ZM 3.98809 9.56944L 7.48809 6.56944L 6.51191
+      5.43056L 3.01191 8.43056L 3.98809 9.56944Z"></path>
+  </svg>`;
 
-// open + close
-let $notionFrame,
+let $stylesheet,
+  db,
+  // open + close
+  $notionFrame,
   $notionRightSidebar,
+  $panel,
+  $hoverTrigger,
   // resize
+  $resizeHandle,
   dragStartX,
   dragStartWidth,
   dragEventsFired,
   panelWidth,
   // render content
-  $notionApp;
+  $notionApp,
+  $pinnedToggle,
+  $panelTitle,
+  $header,
+  $panelContent,
+  $switcher,
+  $switcherTrigger,
+  $switcherOverlayContainer;
 
 // open + close
-const $panel = web.html`<div id="enhancer--panel"></div>`,
-  $pinnedToggle = web.html`<div id="enhancer--panel-header-toggle" tabindex="0"><div>
-    ${await components.feather('chevrons-right')}
-  </div></div>`,
-  $hoverTrigger = web.html`<div id="enhancer--panel-hover-trigger"></div>`,
-  panelPinnedAttr = 'data-enhancer-panel-pinned',
+const panelPinnedAttr = 'data-enhancer-panel-pinned',
   isPinned = () => $panel.hasAttribute(panelPinnedAttr),
   togglePanel = () => {
-    const $elems = [$notionRightSidebar, $notionFrame, $hoverTrigger, $panel];
+    const $elems = [$notionFrame, $notionRightSidebar, $hoverTrigger, $panel].filter(
+      ($el) => $el
+    );
     if (isPinned()) {
       closeSwitcher();
       for (const $elem of $elems) $elem.removeAttribute(panelPinnedAttr);
@@ -54,8 +60,7 @@ const $panel = web.html`<div id="enhancer--panel"></div>`,
     db.set(['panel.pinned'], isPinned());
   },
   // resize
-  $resizeHandle = web.html`<div id="enhancer--panel-resize"><div></div></div>`,
-  updateWidth = async () => {
+  updateWidth = () => {
     document.documentElement.style.setProperty('--component--panel-width', panelWidth + 'px');
     db.set(['panel.width'], panelWidth);
   },
@@ -68,13 +73,13 @@ const $panel = web.html`<div id="enhancer--panel"></div>`,
     $panel.style.width = panelWidth + 'px';
     $hoverTrigger.style.width = panelWidth + 'px';
     $notionFrame.style.paddingRight = panelWidth + 'px';
-    $notionRightSidebar.style.right = panelWidth + 'px';
+    if ($notionRightSidebar) $notionRightSidebar.style.right = panelWidth + 'px';
   },
-  resizeEnd = (event) => {
+  resizeEnd = (_event) => {
     $panel.style.width = '';
     $hoverTrigger.style.width = '';
     $notionFrame.style.paddingRight = '';
-    $notionRightSidebar.style.right = '';
+    if ($notionRightSidebar) $notionRightSidebar.style.right = '';
     updateWidth();
     $resizeHandle.style.cursor = '';
     document.body.removeEventListener('mousemove', resizeDrag);
@@ -88,14 +93,6 @@ const $panel = web.html`<div id="enhancer--panel"></div>`,
     document.body.addEventListener('mouseup', resizeEnd);
   },
   // render content
-  $panelTitle = web.html`<div id="enhancer--panel-header-title"></div>`,
-  $header = web.render(web.html`<div id="enhancer--panel-header"></div>`, $panelTitle),
-  $panelContent = web.html`<div id="enhancer--panel-content"></div>`,
-  $switcher = web.html`<div id="enhancer--panel-switcher"></div>`,
-  $switcherTrigger = web.html`<div id="enhancer--panel-header-switcher" tabindex="0">
-    ${svgExpand}
-  </div>`,
-  $switcherOverlayContainer = web.html`<div id="enhancer--panel-switcher-overlay-container"></div>`,
   isSwitcherOpen = () => document.body.contains($switcher),
   openSwitcher = () => {
     if (!isPinned()) return togglePanel();
@@ -151,20 +148,23 @@ const $panel = web.html`<div id="enhancer--panel"></div>`,
           document.activeElement.click();
           event.stopPropagation();
           break;
-        case 'ArrowUp':
+        case 'ArrowUp': {
           const $prev = event.target.previousElementSibling;
           ($prev || event.target.parentElement.lastElementChild).focus();
           event.stopPropagation();
           break;
-        case 'ArrowDown':
+        }
+        case 'ArrowDown': {
           const $next = event.target.nextElementSibling;
           ($next || event.target.parentElement.firstElementChild).focus();
           event.stopPropagation();
           break;
+        }
       }
     }
   },
   renderView = (view) => {
+    const prevView = _views.find(({ $content }) => document.contains($content));
     web.render(
       web.empty($panelTitle),
       web.render(
@@ -173,14 +173,39 @@ const $panel = web.html`<div id="enhancer--panel"></div>`,
         view.$title
       )
     );
+    view.onFocus();
     web.render(web.empty($panelContent), view.$content);
+    if (prevView) prevView.onBlur();
   };
 
 async function createPanel() {
-  const notionRightSidebarSelector = '.notion-cursor-listener > div[style*="flex-end"]';
-  await web.whenReady([notionRightSidebarSelector]);
+  await web.whenReady(['.notion-frame']);
   $notionFrame = document.querySelector('.notion-frame');
+
+  $panel = web.html`<div id="enhancer--panel"></div>`;
+  $hoverTrigger = web.html`<div id="enhancer--panel-hover-trigger"></div>`;
+  $resizeHandle = web.html`<div id="enhancer--panel-resize"><div></div></div>`;
+  $panelTitle = web.html`<div id="enhancer--panel-header-title"></div>`;
+  $header = web.render(web.html`<div id="enhancer--panel-header"></div>`, $panelTitle);
+  $panelContent = web.html`<div id="enhancer--panel-content"></div>`;
+  $switcher = web.html`<div id="enhancer--panel-switcher"></div>`;
+  $switcherTrigger = web.html`<div id="enhancer--panel-header-switcher" tabindex="0">
+    ${svgExpand}
+  </div>`;
+  $switcherOverlayContainer = web.html`<div id="enhancer--panel-switcher-overlay-container"></div>`;
+
+  const notionRightSidebarSelector = '.notion-cursor-listener > div[style*="flex-end"]',
+    detectRightSidebar = () => {
+      if (!document.contains($notionRightSidebar)) {
+        $notionRightSidebar = document.querySelector(notionRightSidebarSelector);
+        if (isPinned() && $notionRightSidebar) {
+          $notionRightSidebar.setAttribute(panelPinnedAttr, 'true');
+        }
+      }
+    };
   $notionRightSidebar = document.querySelector(notionRightSidebarSelector);
+  web.addDocumentObserver(detectRightSidebar, [notionRightSidebarSelector]);
+
   if (await db.get(['panel.pinned'])) togglePanel();
   web.addHotkeyListener(await db.get(['panel.hotkey']), togglePanel);
   $pinnedToggle.addEventListener('click', (event) => {
@@ -197,7 +222,10 @@ async function createPanel() {
   await enablePanelResize();
   await createViews();
 
-  $notionRightSidebar.after($hoverTrigger, $panel);
+  const cursorListenerSelector =
+    '.notion-cursor-listener > .notion-sidebar-container ~ [style^="position: absolute"]';
+  await web.whenReady([cursorListenerSelector]);
+  document.querySelector(cursorListenerSelector).before($hoverTrigger, $panel);
 }
 
 async function enablePanelResize() {
@@ -211,33 +239,52 @@ async function enablePanelResize() {
   });
 }
 
-async function createViews() {
+function createViews() {
   $notionApp = document.querySelector('.notion-app-inner');
   $header.addEventListener('click', openSwitcher);
   $switcherTrigger.addEventListener('click', openSwitcher);
   $switcherOverlayContainer.addEventListener('click', closeSwitcher);
 }
 
-web.loadStylesheet('api/components/panel.css');
-
 /**
  * adds a view to the enhancer's side panel
- * @param {string} param0.id - a uuid, used to restore the last open view on reload
- * @param {string} param0.icon - an svg string
- * @param {string} param0.title - the name of the view
- * @param {Element} param0.$content - an element containing the content of the view
+ * @param {object} panel - information used to construct and render the panel
+ * @param {string} panel.id - a uuid, used to restore the last open view on reload
+ * @param {string} panel.icon - an svg string
+ * @param {string} panel.title - the name of the view
+ * @param {Element} panel.$content - an element containing the content of the view
+ * @param {function} panel.onBlur - runs when the view is selected/focused
+ * @param {function} panel.onFocus - runs when the view is unfocused/closed
  */
-export const addPanelView = async ({ id, icon, title, $content }) => {
+export const addPanelView = async ({
+  id,
+  icon,
+  title,
+  $content,
+  onFocus = () => {},
+  onBlur = () => {},
+}) => {
+  if (!$stylesheet) {
+    $stylesheet = web.loadStylesheet('api/components/panel.css');
+  }
+
+  if (!db) db = await registry.db('36a2ffc9-27ff-480e-84a7-c7700a7d232d');
+  if (!$pinnedToggle) {
+    $pinnedToggle = web.html`<div id="enhancer--panel-header-toggle" tabindex="0"><div>
+      ${await components.feather('chevrons-right')}
+    </div></div>`;
+  }
+
   const view = {
     id,
-    $icon: web.html`<span class="enhancer--panel-view-title-icon">
-      ${icon}
-    </span>`,
-    $title: web.html`<span class="enhancer--panel-view-title-text">
-      ${web.escape(title)}
-      <span class="enhancer--panel-view-title-fade-edge"> </span>
-    </span>`,
+    $icon: web.render(
+      web.html`<span class="enhancer--panel-view-title-icon"></span>`,
+      icon instanceof Element ? icon : web.html`${icon}`
+    ),
+    $title: web.render(web.html`<span class="enhancer--panel-view-title-text"></span>`, title),
     $content,
+    onFocus,
+    onBlur,
   };
   _views.push(view);
   if (_views.length === 1) await createPanel();

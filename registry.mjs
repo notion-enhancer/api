@@ -1,4 +1,4 @@
-/*
+/**
  * notion-enhancer: api
  * (c) 2021 dragonwocky <thedragonring.bod@gmail.com> (https://dragonwocky.me/)
  * (https://notion-enhancer.github.io/) under the MIT license
@@ -8,19 +8,16 @@
 
 /**
  * interactions with the enhancer's repository of mods
- * @module notion-enhancer/api/registry
+ * @namespace registry
  */
 
-import { env, fs, storage } from './_.mjs';
+import { env, fs, storage } from './index.mjs';
 import { validate } from './registry-validation.mjs';
-
-export const _cache = [],
-  _errors = [];
 
 /**
  * mod ids whitelisted as part of the enhancer's core, permanently enabled
  * @constant
- * @type {array<string>}
+ * @type {string[]}
  */
 export const core = [
   'a6621988-551d-495a-97d8-3c568bca2e9e',
@@ -31,14 +28,14 @@ export const core = [
 /**
  * all environments/platforms currently supported by the enhancer
  * @constant
- * @type {array<string>}
+ * @type {string[]}
  */
 export const supportedEnvs = ['linux', 'win32', 'darwin', 'extension'];
 
 /**
  * all available configuration types
  * @constant
- * @type {array<string>}
+ * @type {string[]}
  */
 export const optionTypes = ['toggle', 'select', 'text', 'number', 'color', 'file', 'hotkey'];
 
@@ -46,7 +43,7 @@ export const optionTypes = ['toggle', 'select', 'text', 'number', 'color', 'file
  * the name of the active configuration profile
  * @returns {string}
  */
-export const profileName = async () => storage.get(['currentprofile'], 'default');
+export const profileName = () => storage.get(['currentprofile'], 'default');
 
 /**
  * the root database for the current profile
@@ -54,45 +51,44 @@ export const profileName = async () => storage.get(['currentprofile'], 'default'
  */
 export const profileDB = async () => storage.db(['profiles', await profileName()]);
 
-/** a notification displayed when the menu is opened for the first time */
-export const welcomeNotification = {
-  id: '84e2d49b-c3dc-44b4-a154-cf589676bfa0',
-  color: 'purple',
-  icon: 'message-circle',
-  message: 'Welcome! Come chat with us on Discord.',
-  link: 'https://discord.gg/sFWPXtA',
-  version: env.version,
-};
-
+let _list;
+const _errors = [];
 /**
  * list all available mods in the repo
  * @param {function} filter - a function to filter out mods
  * @returns {array} a validated list of mod.json objects
  */
 export const list = async (filter = (mod) => true) => {
-  if (!_cache.length) {
-    for (const dir of await fs.getJSON('repo/registry.json')) {
-      try {
-        const mod = await fs.getJSON(`repo/${dir}/mod.json`);
-        mod._dir = dir;
-        if (await validate(mod)) _cache.push(mod);
-      } catch (e) {
-        console.log(e);
-        _errors.push({ source: dir, message: 'invalid mod.json' });
+  if (!_list) {
+    // deno-lint-ignore no-async-promise-executor
+    _list = new Promise(async (res, _rej) => {
+      const passed = [];
+      for (const dir of await fs.getJSON('repo/registry.json')) {
+        try {
+          const mod = {
+            ...(await fs.getJSON(`repo/${dir}/mod.json`)),
+            _dir: dir,
+            _err: (message) => _errors.push({ source: dir, message }),
+          };
+          if (await validate(mod)) passed.push(mod);
+        } catch {
+          _errors.push({ source: dir, message: 'invalid mod.json' });
+        }
       }
-    }
+      res(passed);
+    });
   }
-  const list = [];
-  for (const mod of _cache) if (await filter(mod)) list.push(mod);
-  return list;
+  const filtered = [];
+  for (const mod of await _list) if (await filter(mod)) filtered.push(mod);
+  return filtered;
 };
 
 /**
  * list validation errors encountered when loading the repo
- * @returns {array<object>} error objects with an error message and a source directory
+ * @returns {{ source: string, message: string }[]} error objects with an error message and a source directory
  */
 export const errors = async () => {
-  if (!_errors.length) await list();
+  await list();
   return _errors;
 };
 
@@ -102,8 +98,7 @@ export const errors = async () => {
  * @returns {object} the mod's mod.json
  */
 export const get = async (id) => {
-  if (!_cache.length) await list();
-  return _cache.find((mod) => mod.id === id);
+  return (await list((mod) => mod.id === id))[0];
 };
 
 /**
@@ -153,6 +148,7 @@ export const db = async (id) => {
   return storage.db(
     [id],
     async (path, fallback = undefined) => {
+      if (typeof path === 'string') path = [path];
       if (path.length === 2) {
         // profiles -> profile -> mod -> option
         fallback = (await optionDefault(id, path[1])) ?? fallback;

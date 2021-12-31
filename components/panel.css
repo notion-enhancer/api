@@ -1,5 +1,5 @@
-/*
- * notion-enhancer core: components
+/**
+ * notion-enhancer: components
  * (c) 2021 dragonwocky <thedragonring.bod@gmail.com> (https://dragonwocky.me/)
  * (c) 2021 CloudHill <rl.cloudhill@gmail.com> (https://github.com/CloudHill)
  * (https://notion-enhancer.github.io/) under the MIT license
@@ -15,7 +15,7 @@
   max-height: 100%;
   z-index: 999;
   position: absolute;
-  top: 0;
+  top: 45px;
   right: 0;
   flex-grow: 0;
   flex-shrink: 0;
@@ -23,21 +23,23 @@
 }
 #enhancer--panel-hover-trigger[data-enhancer-panel-pinned] {
   /* taking up the physical space of the panel to move topbar buttons */
+  top: 0;
   position: relative;
   width: var(--component--panel-width);
 }
 
-.notion-cursor-listener > div[style*='flex-end'] {
-  transition: margin-right 300ms ease-in-out;
-}
-.notion-cursor-listener > div[style*='flex-end'][data-enhancer-panel-pinned] {
-  margin-right: var(--component--panel-width);
-}
 .notion-frame {
   transition: padding-right 300ms ease-in-out;
 }
 .notion-frame[data-enhancer-panel-pinned] {
   padding-right: var(--component--panel-width);
+}
+.notion-cursor-listener > div[style*='flex-end'] {
+  transition: margin-right 300ms ease-in-out;
+}
+.notion-cursor-listener > div[style*='flex-end'][data-enhancer-panel-pinned],
+#enhancer--panel[data-enhancer-panel-pinned] + div[style*='flex-end'] {
+  margin-right: var(--component--panel-width);
 }
 
 #enhancer--panel {
@@ -85,6 +87,9 @@
   height: 1em;
   width: 1em;
 }
+.enhancer--panel-view-icon {
+  margin-bottom: -2px;
+}
 .enhancer--panel-view-title .enhancer--panel-view-title-text {
   font-size: 0.9em;
   margin: 0 0 0 0.75em;
@@ -101,8 +106,7 @@
   cursor: pointer;
   user-select: none;
   padding: 0.75rem 0 0.75rem 1rem;
-  --scoped--bg: var(--theme--bg_secondary);
-  background: var(--scoped--bg);
+  background: var(--theme--bg_secondary);
 }
 #enhancer--panel-header-title {
   max-width: calc(100% - 4.25rem);
@@ -113,11 +117,6 @@
 #enhancer--panel-header-title .enhancer--panel-view-title-text {
   max-width: calc(100% - 1.75em);
   position: relative;
-}
-.enhancer--panel-view-title-fade-edge {
-  display: inline-block;
-  width: 0.75rem;
-  height: 1em;
 }
 
 #enhancer--panel-switcher-overlay-container {
@@ -135,7 +134,7 @@
   right: 14px;
   border-radius: 3px;
   padding: 8px 0;
-  background: var(--theme--bg_popup);
+  background: var(--theme--bg_card);
   box-shadow: var(--theme--ui_shadow, rgba(15, 15, 15, 0.05)) 0px 0px 0px 1px,
     var(--theme--ui_shadow, rgba(15, 15, 15, 0.1)) 0px 3px 6px,
     var(--theme--ui_shadow, rgba(15, 15, 15, 0.2)) 0px 9px 24px !important;
@@ -150,32 +149,17 @@
   cursor: pointer;
   overflow: hidden;
   position: relative;
-  --scoped--bg: var(--theme--bg_popup);
-  background: var(--scoped--bg);
+  background: var(--theme--bg_card);
 }
 #enhancer--panel-header:hover,
 #enhancer--panel-header:focus-within,
 .enhancer--panel-switcher-item:hover,
 .enhancer--panel-switcher-item:focus {
-  --scoped--bg: var(--theme--ui_interactive-hover);
+  background: var(--theme--ui_interactive-hover);
 }
 #enhancer--panel-header:active,
 .enhancer--panel-switcher-item:active {
   background: var(--theme--ui_interactive-active);
-}
-.enhancer--panel-view-title-fade-edge:after {
-  content: '';
-  height: 100%;
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 0.75rem;
-  background: linear-gradient(
-    to right,
-    transparent 0%,
-    var(--scoped--bg) 50%,
-    var(--scoped--bg) 100%
-  );
 }
 
 #enhancer--panel-content {

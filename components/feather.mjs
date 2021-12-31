@@ -1,17 +1,14 @@
-/*
- * notion-enhancer: api
+/**
+ * notion-enhancer: components
  * (c) 2021 dragonwocky <thedragonring.bod@gmail.com> (https://dragonwocky.me/)
  * (https://notion-enhancer.github.io/) under the MIT license
  */
 
 'use strict';
 
-/**
- * shared notion-style elements
- * @module notion-enhancer/api/components/feather
- */
+/** shared notion-style elements */
 
-import { fs, web } from '../_.mjs';
+import { fs, web } from '../index.mjs';
 
 let _$iconSheet;
 
